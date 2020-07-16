@@ -28,17 +28,27 @@ def download_image(id_number):
 def download_book(id_number):
         while id_number <= 10:
             url = 'http://tululu.org/b{}/'.format(id_number)
-            response = requests.get(url)
+            response = requests.get(url, allow_redirects=False)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'lxml')
-            find_title = soup.find('h1')
-            title = find_title.text.strip(':').rsplit(':')[0]
-            print('Заголовок: ' + title)            
             try:
-                find_cover = soup.find('div', class_='bookimage').find('a').find('img')['src']
-                print(urljoin('http://tululu.org/', find_cover))
+                find_title = soup.find('h1')
+                title = find_title.text.strip(':').rsplit(':')[0]
+                print('\n' + 'Заголовок: ' + title)
             except AttributeError:
-                print('Attribute error')
+                print('It has no title')       
+
+            #try:
+            #    find_cover = soup.find('div', class_='bookimage').find('a').find('img')['src']
+            #    print(urljoin('http://tululu.org/', find_cover))
+            #except AttributeError:
+            #    print('It has no cover')
+
+            try:
+                for tag in soup.find_all('div', class_='texts'):
+                    print("{0}: {1}".format(tag.name, tag.text).split(')')[1])
+            except AttributeError:
+                print('It has no comments')
 
             url_to_download = "http://tululu.org/txt.php"
             payload = {'id': id_number}
@@ -69,8 +79,8 @@ def get_information_about_book(id_number):
 
 
 def main():
-        #download_book(1)
-        download_image(1)
+        download_book(1)
+        #download_image(1)
         #get_information_about_book(1)
 
 
