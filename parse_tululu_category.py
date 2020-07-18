@@ -17,34 +17,43 @@ def make_json(collection_number, page_number):
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
-        find_links = soup.find_all('div', class_='bookimage')
+        selector = "div.bookimage"
+        find_links = soup.select(selector)
         data = []
 
         for tag in find_links:
-            for url_book in tag.find_all('a'):
+            for url_book in tag.select('a'):
                 id_of_book = urljoin('http://tululu.org/',
                                      url_book['href']).split('b')[1][:-1]
                 url = 'http://tululu.org/b{}/'.format(id_of_book)
                 response = requests.get(url)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, 'lxml')
-                find_title = soup.find('h1')
+                title_selector = "h1"
+                find_title = soup.select_one(title_selector)
                 title = find_title.text.strip(':').rsplit(':')[0]
-                cover = soup.find('div', class_='bookimage').find('img')['src']
-                find_author = soup.find('h1').find('a')
+                cover_selector = "div.bookimage img"
+                for cover in soup.select(cover_selector):
+                    covers = cover['src']
+
+                author_selector = "h1 a"
+                find_author = soup.select_one(author_selector)
                 author = find_author.text
                 book_path = 'books/{}.txt'.format(id_of_book)
-                find_genre = soup.find('span', class_='d_book')
+
+                genre_selector = "span.d_book a"
+                find_genre = soup.select(genre_selector)
                 genres = []
-                for genre in find_genre.find_all('a'):
+                for genre in find_genre:
                     genres.append('{}'.format(genre.text))
 
+                comment_selector = "div.texts"
                 comments = []
-                for tag in soup.find_all('div', class_='texts'):
-                    comment = '{}'.format(tag.text).split(')')[1]
+                for note in soup.select(comment_selector):
+                    comment = '{}'.format(note.text).split(')')[1]
                     comments.append(comment)
 
-                to_json = {'title': title, 'image_src': cover, 'genre': genres,
+                to_json = {'title': title, 'image_src': covers, 'genre': genres,
                            'comments': comments, 'author': author, 'book_path': book_path}
                 data.append(to_json)
 
@@ -65,10 +74,11 @@ def download_image(collection_number, page_number):
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
-        find_image_links = soup.find_all('div', class_='bookimage')
+        selector = "div.bookimage"
+        find_image_links = soup.select(selector)
 
         for tag in find_image_links:
-            for url_image in tag.find_all('img'):
+            for url_image in tag.select('img'):
                 download_image = urljoin(url, url_image['src'])
                 response = requests.get(download_image, allow_redirects=False)
                 response.raise_for_status()
@@ -87,10 +97,11 @@ def download_book_from_collection(collection_number, page_number):
         response = requests.get(url, allow_redirects=False)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
-        find_links = soup.find_all('div', class_='bookimage')
+        selector = "div.bookimage"
+        find_links = soup.select(selector)
 
         for tag in find_links:
-            for url_book in tag.find_all('a'):
+            for url_book in tag.select('a'):
                 links_from_category = urljoin(
                     'http://tululu.org/', url_book['href'])
                 id_of_book = urljoin('http://tululu.org/',
@@ -99,7 +110,7 @@ def download_book_from_collection(collection_number, page_number):
                 response = requests.get(url_of_book, allow_redirects=False)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, 'lxml')
-                find_title = soup.find('h1')
+                find_title = soup.select_one('h1')
                 title = find_title.text.strip(':').rsplit(':')[0]
 
                 for data in id_of_book:
@@ -123,8 +134,8 @@ def download_book_from_collection(collection_number, page_number):
 
 def main():
     make_json(55, 1)
-    #download_book_from_collection(55, 1)
-    #download_image(55, 1)
+    download_book_from_collection(55, 1)
+    download_image(55, 1)
 
 
 if __name__ == "__main__":
