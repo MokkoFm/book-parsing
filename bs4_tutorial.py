@@ -7,6 +7,7 @@ response = requests.get(url)
 response.raise_for_status()
 
 soup = BeautifulSoup(response.text, 'lxml')
-title_tag = soup.find('h1').find('a')
-book_data = title_tag.text
-print(book_data)
+find_author = soup.find('h1').find('a')
+author = title_tag.text
+
+find_title = soup.find('h1')

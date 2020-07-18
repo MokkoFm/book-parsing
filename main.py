@@ -36,25 +36,34 @@ def download_book(id_number):
                 title = find_title.text.strip(':').rsplit(':')[0]
                 print('\n' + 'Заголовок: ' + title)
             except AttributeError:
-                print('It has no title')       
+                'The book with id {} has no title'.format(id_number)
+
+            try:
+                find_genre = soup.find('span', class_='d_book')
+                #print(find_genre)
+                for tag in find_genre.find_all('a'):
+                    print("{}".format(tag.text))
+            except AttributeError:
+                'The book with id {} has no genre'.format(id_number)  
 
             #try:
             #    find_cover = soup.find('div', class_='bookimage').find('a').find('img')['src']
             #    print(urljoin('http://tululu.org/', find_cover))
             #except AttributeError:
-            #    print('It has no cover')
+            #    'The book with id {} has no cover'.format(id_number)
 
-            try:
-                for tag in soup.find_all('div', class_='texts'):
-                    print("{0}: {1}".format(tag.name, tag.text).split(')')[1])
-            except AttributeError:
-                print('It has no comments')
+            #try:
+            #    for tag in soup.find_all('div', class_='texts'):
+            #        print("{}".format(tag.text).split(')')[1])
+            #except AttributeError:
+            #    'The book with id {} has no comments'.format(id_number)
 
             url_to_download = "http://tululu.org/txt.php"
             payload = {'id': id_number}
             response = requests.get(url_to_download, params=payload, allow_redirects=False)
             response.raise_for_status()
             filename = Path('books', sanitize_filename('{}. {}.txt').format(id_number, title))
+            print(filename)
 
             with open(filename, 'wb') as file:
                 file.write(response.content)
