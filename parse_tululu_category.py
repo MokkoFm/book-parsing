@@ -7,12 +7,14 @@ from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
 import json
 import pprint
+import argparse
+
 
 os.chdir("C:/Users/mokko/Desktop/book-parsing")
 
 
-def make_json(collection_number, page_number):
-    while page_number <= 1:
+def make_json(collection_number, page_number, last_page):
+    while page_number <= last_page:
         url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
         response = requests.get(url)
         response.raise_for_status()
@@ -68,8 +70,8 @@ def make_json(collection_number, page_number):
         page_number += 1
 
 
-def download_image(collection_number, page_number):
-    while page_number <= 1:
+def download_image(collection_number, page_number, last_page):
+    while page_number <= last_page:
         url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
         response = requests.get(url)
         response.raise_for_status()
@@ -91,8 +93,8 @@ def download_image(collection_number, page_number):
         page_number += 1
 
 
-def download_book_from_collection(collection_number, page_number):
-    while page_number <= 1:
+def download_book_from_collection(collection_number, page_number, last_page):
+    while page_number <= last_page:
         url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
         response = requests.get(url, allow_redirects=False)
         response.raise_for_status()
@@ -107,6 +109,7 @@ def download_book_from_collection(collection_number, page_number):
                 id_of_book = urljoin('http://tululu.org/',
                                      url_book['href']).split('b')[1][:-1]
                 url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
+                print(url_of_book)
                 response = requests.get(url_of_book, allow_redirects=False)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, 'lxml')
@@ -133,9 +136,18 @@ def download_book_from_collection(collection_number, page_number):
 
 
 def main():
-    make_json(55, 1)
-    download_book_from_collection(55, 1)
-    download_image(55, 1)
+    parser = argparse.ArgumentParser(description='You can download books from tululu')
+    parser.add_argument('-start', '--start_page', help='You can choose first page to download books', default=1, type=int)
+    parser.add_argument('-end', '--end_page', help='You can choose last page to download books', default=2, type=int)
+    args = parser.parse_args()
+    page_number = args.start_page
+    last_page = args.end_page
+
+    #make_json(55, page_number, last_page)
+    #download_book_from_collection(55, page_number, last_page)
+    download_image(55, page_number, last_page)
+
+    return last_page
 
 
 if __name__ == "__main__":
