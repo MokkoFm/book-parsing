@@ -139,15 +139,33 @@ def main():
     parser = argparse.ArgumentParser(description='You can download books from tululu')
     parser.add_argument('-start', '--start_page', help='You can choose first page to download books', default=1, type=int)
     parser.add_argument('-end', '--end_page', help='You can choose last page to download books', default=2, type=int)
+    parser.add_argument('--skip_images', help='You can skip downloading images', action='store_const', const=True, default=False)
+    parser.add_argument('--skip_txt', help='You can skip downloading books', action="store_const", const=True, default=False)
+    parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
+    parser.add_argument('--dest_folder', help="You can check current folder with script", action='store_const', const=True, default=False)
     args = parser.parse_args()
     page_number = args.start_page
     last_page = args.end_page
 
-    #make_json(55, page_number, last_page)
-    #download_book_from_collection(55, page_number, last_page)
-    download_image(55, page_number, last_page)
+    if args.dest_folder:
+        print(os. getcwd())
 
-    return last_page
+    if args.skip_images:
+        make_json(55, page_number, last_page)
+        download_book_from_collection(55, page_number, last_page)
+
+    if args.skip_txt:
+        make_json(55, page_number, last_page)
+        download_image(55, page_number, last_page)
+
+    if args.skip_json:
+        download_book_from_collection(55, page_number, last_page)
+        download_image(55, page_number, last_page)
+
+    if not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
+        make_json(55, page_number, last_page)
+        download_book_from_collection(55, page_number, last_page)
+        download_image(55, page_number, last_page)
 
 
 if __name__ == "__main__":
