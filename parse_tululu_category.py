@@ -10,9 +10,6 @@ import pprint
 import argparse
 
 
-os.chdir("C:/Users/mokko/Desktop/book-parsing")
-
-
 def make_json(collection_number, page_number, last_page):
     while page_number <= last_page:
         url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)

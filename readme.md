@@ -1,10 +1,15 @@
 # Parser of books from web-site tululu.org
 
-<Описание проекта>
+You can download books, covers of books from web-site tululu.org automatically. Besides, you can get json-file with data of your books. 
 
 ### How to install
 
-<Расскажите, что для запуска нужен питон, какие библиотеки скачать>
+* Check that you have Python 3  
+* Install requirements:  
+```sh
+$ pip install -r requirements.txt
+```
+* How to start parser - ```python parse_tululu_category.py```
 
 ### Arguments
 
