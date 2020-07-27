@@ -10,124 +10,100 @@ import pprint
 import argparse
 
 
-def make_json(collection_number, page_number, last_page):
-    while page_number <= last_page:
-        url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')
-        selector = "div.bookimage"
-        links = soup.select(selector)
-        data = []
-
-        for tag in links:
-            for url_book in tag.select('a'):
-                id_of_book = urljoin(url,
-                                     url_book['href']).split('b')[1][:-1]
-                url = 'http://tululu.org/b{}/'.format(id_of_book)
-                response = requests.get(url)
+def make_json(collection_number, page_number, last_page, url, links):
+    data = []
+    for tag in links:
+        for url_book in tag.select('a'):
+            id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
+            url = 'http://tululu.org/b{}/'.format(id_of_book)
+            try:
+                response = requests.get(url, allow_redirects=False)
                 response.raise_for_status()
-                soup = BeautifulSoup(response.text, 'lxml')
-                title_selector = "h1"
-                finder_title = soup.select_one(title_selector)
-                title = finder_title.text.strip(':').rsplit(':')[0]
-                cover_selector = "div.bookimage img"
-                for cover in soup.select(cover_selector):
-                    covers = cover['src']
+            except requests.HTTPError as exception:
+                print(exception)
+            soup = BeautifulSoup(response.text, 'lxml')
+            title_selector = "h1"
+            finder_title = soup.select_one(title_selector)
+            title = finder_title.text.strip(':').rsplit(':')[0]
+            cover_selector = "div.bookimage img"
+            for cover in soup.select(cover_selector):
+                covers = cover['src']
 
-                author_selector = "h1 a"
-                finder_author = soup.select_one(author_selector)
-                author = finder_author.text
-                book_path = 'books/{}.txt'.format(id_of_book)
+            author_selector = "h1 a"
+            finder_author = soup.select_one(author_selector)
+            author = finder_author.text
+            book_path = 'books/{}.txt'.format(id_of_book)
 
-                genre_selector = "span.d_book a"
-                finder_genre = soup.select(genre_selector)
-                genres = []
-                for genre in finder_genre:
-                    genres.append('{}'.format(genre.text))
+            genre_selector = "span.d_book a"
+            finder_genre = soup.select(genre_selector)
+            genres = []
+            for genre in finder_genre:
+                genres.append('{}'.format(genre.text))
 
-                comment_selector = "div.texts"
-                comments = []
-                for note in soup.select(comment_selector):
-                    comment = '{}'.format(note.text).split(')')[1]
-                    comments.append(comment)
+            comment_selector = "div.texts"
+            comments = []
+            for note in soup.select(comment_selector):
+                comment = '{}'.format(note.text).split(')')[1]
+                comments.append(comment)
 
-                to_json = {'title': title, 'image_src': covers, 'genre': genres,
-                           'comments': comments, 'author': author, 'book_path': book_path}
-                data.append(to_json)
+            to_json = {'title': title, 'image_src': covers, 'genre': genres,
+                        'comments': comments, 'author': author, 'book_path': book_path}
+            data.append(to_json)
 
-        with open("books_data.json", "w", encoding='utf-8') as my_file:
+    with open("books_data.json", "w", encoding='utf-8') as my_file:
             json.dump(data, my_file, ensure_ascii=False)
 
-        with open('books_data.json', encoding="utf8") as file:
-            data = file.read()
-            json_data = json.loads(data)
-            pprint.pprint(json_data)
-
-        page_number += 1
+    page_number += 1
 
 
-def download_image(collection_number, page_number, last_page):
-    while page_number <= last_page:
-        url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')
-        selector = "div.bookimage"
-        image_links = soup.select(selector)
-
-        for tag in image_links:
-            for url_image in tag.select('img'):
-                image_path = urljoin(url, url_image['src'])
+def download_image(collection_number, page_number, last_page, url, links):
+    for tag in links:
+        for url_image in tag.select('img'):
+            image_path = urljoin(url, url_image['src'])
+            try:
                 response = requests.get(image_path, allow_redirects=False)
                 response.raise_for_status()
-                image_name = urljoin(url, url_image['src']).split('/')[4]
-                filename = Path('images', '{}'.format(image_name))
+            except requests.HTTPError as exception:
+                print(exception)
+            image_name = urljoin(url, url_image['src']).split('/')[4]
+            filename = Path('images', '{}'.format(image_name))
+
+            with open(filename, 'wb') as file:
+                file.write(response.content)
+
+    page_number += 1
+
+
+def download_book_from_collection(collection_number, page_number, last_page, url, links):
+    for tag in links:
+        for url_book in tag.select('a'):
+            id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
+            url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
+            try: 
+                response = requests.get(url_of_book, allow_redirects=False)
+                response.raise_for_status()
+            except requests.HTTPError as exception:
+                print(exception)
+            soup = BeautifulSoup(response.text, 'lxml')
+            finder_title = soup.select_one('h1')
+            title = finder_title.text.strip(':').rsplit(':')[0]
+
+            for data in id_of_book:
+                url_to_download = "http://tululu.org/txt.php"
+                payload = {'id': id_of_book}
+                try:
+                    response = requests.get(url_to_download, params=payload, allow_redirects=False)
+                    response.raise_for_status()
+                except requests.HTTPError as exception:
+                    print(exception)
+                filename = Path('books', sanitize_filename('{}. {}.txt').format(id_of_book, title))
 
                 with open(filename, 'wb') as file:
                     file.write(response.content)
 
-        page_number += 1
-
-
-def download_book_from_collection(collection_number, page_number, last_page):
-    while page_number <= last_page:
-        url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
-        response = requests.get(url, allow_redirects=False)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')
-        selector = "div.bookimage"
-        links = soup.select(selector)
-
-        for tag in links:
-            for url_book in tag.select('a'):
-                links_from_category = urljoin(
-                    'http://tululu.org/', url_book['href'])
-                id_of_book = urljoin(url,
-                                     url_book['href']).split('b')[1][:-1]
-                url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
-                print(url_of_book)
-                response = requests.get(url_of_book, allow_redirects=False)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, 'lxml')
-                finder_title = soup.select_one('h1')
-                title = finder_title.text.strip(':').rsplit(':')[0]
-
-                for data in id_of_book:
-                    url_to_download = "http://tululu.org/txt.php"
-                    payload = {'id': id_of_book}
-                    response = requests.get(
-                        url_to_download, params=payload, allow_redirects=False)
-                    response.raise_for_status()
-                    filename = Path('books', sanitize_filename(
-                        '{}. {}.txt').format(id_of_book, title))
-
-                    with open(filename, 'wb') as file:
-                        file.write(response.content)
-
-                    if os.stat(filename).st_size == 0:
-                        print(" Removing ", filename)
-                        os.remove(filename)
+                if os.stat(filename).st_size == 0:
+                    print(" Removing ", filename)
+                    os.remove(filename)
 
         page_number += 1
 
@@ -141,28 +117,41 @@ def main():
     parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
     parser.add_argument('--dest_folder', help="You can check current folder with script", action='store_const', const=True, default=False)
     args = parser.parse_args()
+    
     page_number = args.start_page
     last_page = args.end_page
+    collection_number = 55
+    url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
+    response = requests.get(url, allow_redirects=False)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'lxml')
+    selector = "div.bookimage"
+    links = soup.select(selector)
+        
+    while page_number <= last_page:
+        if args.dest_folder:
+            path = input('Please, write your destination folder for getting files')
+            os.chdir(path)
+            make_json(collection_number, page_number, last_page, url, links)
+            download_book_from_collection(collection_number, page_number, last_page, url, links)
+            download_image(collection_number, page_number, last_page, url, links)
 
-    if args.dest_folder:
-        print(os. getcwd())
+        if args.skip_images:
+            make_json(collection_number, page_number, last_page, url, links)
+            download_book_from_collection(collection_number, page_number, last_page, url, links)
 
-    if args.skip_images:
-        make_json(55, page_number, last_page)
-        download_book_from_collection(55, page_number, last_page)
+        if args.skip_txt:
+            make_json(collection_number, page_number, last_page, url, links)
+            download_image(collection_number, page_number, last_page, url, links)
 
-    if args.skip_txt:
-        make_json(55, page_number, last_page)
-        download_image(55, page_number, last_page)
+        if args.skip_json:
+            download_book_from_collection(collection_number, page_number, last_page, url, links)
+            download_image(collection_number, page_number, last_page, url, links)
 
-    if args.skip_json:
-        download_book_from_collection(55, page_number, last_page)
-        download_image(55, page_number, last_page)
-
-    if not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
-        make_json(55, page_number, last_page)
-        #download_book_from_collection(55, page_number, last_page)
-        #download_image(55, page_number, last_page)
+        if not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
+            make_json(collection_number, page_number, last_page, url, links)
+            download_book_from_collection(collection_number, page_number, last_page, url, links)
+            download_image(collection_number, page_number, last_page, url, links)
 
 
 if __name__ == "__main__":
