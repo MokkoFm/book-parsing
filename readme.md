@@ -1,6 +1,6 @@
 # Parser of books from web-site tululu.org
 
-You can download books, covers of books from web-site tululu.org automatically. Besides, you can get json-file with data of your books. 
+You can download books, covers of books from web-site [tululu.org](http://tululu.org/) automatically. Besides, you can get json-file with data of your books. 
 
 ### How to install
 
