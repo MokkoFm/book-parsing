@@ -115,7 +115,7 @@ def main():
     parser.add_argument('--skip_images', help='You can skip downloading images', action='store_const', const=True, default=False)
     parser.add_argument('--skip_txt', help='You can skip downloading books', action="store_const", const=True, default=False)
     parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
-    parser.add_argument('--dest_folder', help="You can check current folder with script", action='store_const', const=True, default=False)
+    parser.add_argument('--dest_folder', help="You can choose destination folder for files", action='store_const', const=True, default=False)
     args = parser.parse_args()
     
     page_number = args.start_page
