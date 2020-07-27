@@ -22,7 +22,7 @@ def make_json(collection_number, page_number, last_page):
 
         for tag in links:
             for url_book in tag.select('a'):
-                id_of_book = urljoin('http://tululu.org/',
+                id_of_book = urljoin(url,
                                      url_book['href']).split('b')[1][:-1]
                 url = 'http://tululu.org/b{}/'.format(id_of_book)
                 response = requests.get(url)
@@ -103,7 +103,7 @@ def download_book_from_collection(collection_number, page_number, last_page):
             for url_book in tag.select('a'):
                 links_from_category = urljoin(
                     'http://tululu.org/', url_book['href'])
-                id_of_book = urljoin('http://tululu.org/',
+                id_of_book = urljoin(url,
                                      url_book['href']).split('b')[1][:-1]
                 url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
                 print(url_of_book)
@@ -161,8 +161,8 @@ def main():
 
     if not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
         make_json(55, page_number, last_page)
-        download_book_from_collection(55, page_number, last_page)
-        download_image(55, page_number, last_page)
+        #download_book_from_collection(55, page_number, last_page)
+        #download_image(55, page_number, last_page)
 
 
 if __name__ == "__main__":
