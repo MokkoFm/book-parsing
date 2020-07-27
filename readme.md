@@ -9,7 +9,10 @@ You can download books, covers of books from web-site [tululu.org](http://tululu
 ```sh
 $ pip install -r requirements.txt
 ```
-* How to start parser - ```python parse_tululu_category.py```
+* How to start parser  
+```sh
+python parse_tululu_category.py
+```
 
 ### Arguments
 
