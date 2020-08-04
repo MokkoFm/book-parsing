@@ -2,6 +2,7 @@ import requests
 import os
 import os.path
 from pathlib import Path
+import pathlib
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
@@ -9,9 +10,14 @@ import json
 import pprint
 import argparse
 
+def dir_path(string):
+    if os.path.isdir(string):
+        return string
+    else:
+        raise NotADirectoryError(string)
 
-def make_json(collection_number, page_number, last_page, url, links):
-    data = []
+
+def make_json(collection_number, page_number, last_page, url, links, json_data):
     for tag in links:
         for url_book in tag.select('a'):
             id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
@@ -19,8 +25,12 @@ def make_json(collection_number, page_number, last_page, url, links):
             try:
                 response = requests.get(url, allow_redirects=False)
                 response.raise_for_status()
+                if response.status_code == 302:
+                    print('Warning, redirect in make_json func from book with url {}!'.format(url))
+                    break
             except requests.HTTPError as exception:
-                print(exception)
+                raise exception
+
             soup = BeautifulSoup(response.text, 'lxml')
             title_selector = "h1"
             finder_title = soup.select_one(title_selector)
@@ -48,12 +58,11 @@ def make_json(collection_number, page_number, last_page, url, links):
 
             to_json = {'title': title, 'image_src': covers, 'genre': genres,
                         'comments': comments, 'author': author, 'book_path': book_path}
-            data.append(to_json)
+            json_data.append(to_json)
 
-    with open("books_data.json", "w", encoding='utf-8') as my_file:
-            json.dump(data, my_file, ensure_ascii=False)
-
-    page_number += 1
+    if page_number == last_page:
+        with open("books_data.json", "w", encoding='utf-8') as my_file:
+            json.dump(json_data, my_file, ensure_ascii=False)
 
 
 def download_image(collection_number, page_number, last_page, url, links):
@@ -63,15 +72,18 @@ def download_image(collection_number, page_number, last_page, url, links):
             try:
                 response = requests.get(image_path, allow_redirects=False)
                 response.raise_for_status()
+                if response.status_code == 302:
+                    print('Warning, redirect in download image func from image with path {}!'.format(image_path))
+                    break
             except requests.HTTPError as exception:
-                print(exception)
+                raise exception
             image_name = urljoin(url, url_image['src']).split('/')[4]
+            path_for_images = pathlib.Path("images/")
+            path_for_images.mkdir(parents=True, exist_ok=True)
             filename = Path('images', '{}'.format(image_name))
 
             with open(filename, 'wb') as file:
                 file.write(response.content)
-
-    page_number += 1
 
 
 def download_book_from_collection(collection_number, page_number, last_page, url, links):
@@ -79,11 +91,15 @@ def download_book_from_collection(collection_number, page_number, last_page, url
         for url_book in tag.select('a'):
             id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
             url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
-            try: 
+            try:
                 response = requests.get(url_of_book, allow_redirects=False)
                 response.raise_for_status()
+                if response.status_code == 302:
+                    print('Warning, redirect in download book func from book with url {}!'.format(url_of_book))
+                    break
             except requests.HTTPError as exception:
-                print(exception)
+                    raise exception
+
             soup = BeautifulSoup(response.text, 'lxml')
             finder_title = soup.select_one('h1')
             title = finder_title.text.strip(':').rsplit(':')[0]
@@ -94,8 +110,13 @@ def download_book_from_collection(collection_number, page_number, last_page, url
                 try:
                     response = requests.get(url_to_download, params=payload, allow_redirects=False)
                     response.raise_for_status()
+                    if response.status_code == 302:
+                        print('Warning, redirect in download book func from book with id {}!'.format(id_of_book))
+                        break
                 except requests.HTTPError as exception:
-                    print(exception)
+                    raise exception
+                path_for_books = pathlib.Path("books/")
+                path_for_books.mkdir(parents=True, exist_ok=True)
                 filename = Path('books', sanitize_filename('{}. {}.txt').format(id_of_book, title))
 
                 with open(filename, 'wb') as file:
@@ -105,8 +126,6 @@ def download_book_from_collection(collection_number, page_number, last_page, url
                     print(" Removing ", filename)
                     os.remove(filename)
 
-        page_number += 1
-
 
 def main():
     parser = argparse.ArgumentParser(description='You can download books from tululu')
@@ -115,33 +134,40 @@ def main():
     parser.add_argument('--skip_images', help='You can skip downloading images', action='store_const', const=True, default=False)
     parser.add_argument('--skip_txt', help='You can skip downloading books', action="store_const", const=True, default=False)
     parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
-    parser.add_argument('--dest_folder', help="You can choose destination folder for files", action='store_const', const=True, default=False)
+    parser.add_argument('--dest_folder', help="You can choose destination folder for files", type=dir_path)
     args = parser.parse_args()
     
     page_number = args.start_page
     last_page = args.end_page
     collection_number = 55
-    url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
-    response = requests.get(url, allow_redirects=False)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'lxml')
-    selector = "div.bookimage"
-    links = soup.select(selector)
+    json_data = []
         
     while page_number <= last_page:
+        url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
+        try:
+            response = requests.get(url, allow_redirects=False)
+            response.raise_for_status()
+            if response.status_code == 302:
+                        print('Warning, redirect in main func from book with url {}!'.format(url))
+                        break
+        except requests.HTTPError as exception:
+            raise exception
+        soup = BeautifulSoup(response.text, 'lxml')
+        selector = "div.bookimage"
+        links = soup.select(selector)
+
         if args.dest_folder:
-            path = input('Please, write your destination folder for getting files')
-            os.chdir(path)
-            make_json(collection_number, page_number, last_page, url, links)
+            os.chdir(args.dest_folder)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_book_from_collection(collection_number, page_number, last_page, url, links)
             download_image(collection_number, page_number, last_page, url, links)
 
         elif args.skip_images:
-            make_json(collection_number, page_number, last_page, url, links)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_book_from_collection(collection_number, page_number, last_page, url, links)
 
         elif args.skip_txt:
-            make_json(collection_number, page_number, last_page, url, links)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_image(collection_number, page_number, last_page, url, links)
 
         elif args.skip_json:
@@ -149,29 +175,28 @@ def main():
             download_image(collection_number, page_number, last_page, url, links)
 
         elif args.skip_images and args.skip_txt:
-            make_json(collection_number, page_number, last_page, url, links)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
 
         elif args.skip_images and args.skip_txt and args.dest_folder:
-            path = input('Please, write your destination folder for getting files')
-            os.chdir(path)
-            make_json(collection_number, page_number, last_page, url, links)
+            os.chdir(args.dest_folder)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
 
         elif args.dest_folder and args.skip_images:
-            path = input('Please, write your destination folder for getting files')
-            os.chdir(path)
-            make_json(collection_number, page_number, last_page, url, links)
+            os.chdir(args.dest_folder)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_book_from_collection(collection_number, page_number, last_page, url, links)
             
         elif args.dest_folder and args.skip_txt:
-            path = input('Please, write your destination folder for getting files')
-            os.chdir(path)
-            make_json(collection_number, page_number, last_page, url, links)
+            os.chdir(args.dest_folder)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_image(collection_number, page_number, last_page, url, links)
 
         elif not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
-            make_json(collection_number, page_number, last_page, url, links)
+            make_json(collection_number, page_number, last_page, url, links, json_data)
             download_book_from_collection(collection_number, page_number, last_page, url, links)
             download_image(collection_number, page_number, last_page, url, links)
+
+        page_number +=1
 
 
 if __name__ == "__main__":
