@@ -158,43 +158,15 @@ def main():
 
         if args.dest_folder:
             os.chdir(args.dest_folder)
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-            download_book_from_collection(collection_number, page_number, last_page, url, links)
+
+        if not args.skip_images:
             download_image(collection_number, page_number, last_page, url, links)
 
-        elif args.skip_images:
-            make_json(collection_number, page_number, last_page, url, links, json_data)
+        if not args.skip_txt:
             download_book_from_collection(collection_number, page_number, last_page, url, links)
 
-        elif args.skip_txt:
+        if not args.skip_json:
             make_json(collection_number, page_number, last_page, url, links, json_data)
-            download_image(collection_number, page_number, last_page, url, links)
-
-        elif args.skip_json:
-            download_book_from_collection(collection_number, page_number, last_page, url, links)
-            download_image(collection_number, page_number, last_page, url, links)
-
-        elif args.skip_images and args.skip_txt:
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-
-        elif args.skip_images and args.skip_txt and args.dest_folder:
-            os.chdir(args.dest_folder)
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-
-        elif args.dest_folder and args.skip_images:
-            os.chdir(args.dest_folder)
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-            download_book_from_collection(collection_number, page_number, last_page, url, links)
-            
-        elif args.dest_folder and args.skip_txt:
-            os.chdir(args.dest_folder)
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-            download_image(collection_number, page_number, last_page, url, links)
-
-        elif not args.skip_images and not args.skip_txt and not args.skip_json and not args.dest_folder:
-            make_json(collection_number, page_number, last_page, url, links, json_data)
-            download_book_from_collection(collection_number, page_number, last_page, url, links)
-            download_image(collection_number, page_number, last_page, url, links)
 
         page_number +=1
 
