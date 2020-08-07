@@ -9,6 +9,8 @@ from urllib.parse import urljoin
 import json
 import pprint
 import argparse
+import sys 
+from time import sleep
 
 def dir_path(string):
     if os.path.isdir(string):
@@ -22,14 +24,11 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
         for tag in tag.select('a'):
             book_id = urljoin(url, tag['href']).split('b')[1][:-1]
             url = 'http://tululu.org/b{}/'.format(book_id)
-            try:
-                response = requests.get(url, allow_redirects=False)
-                response.raise_for_status()
-                if response.status_code == 302:
-                    print('Warning, redirect in make_json func from book with url {}!'.format(url))
-                    break
-            except requests.HTTPError as exception:
-                raise exception
+            response = requests.get(url, allow_redirects=False)
+            response.raise_for_status()
+            if response.status_code == 302:
+                print('Warning, redirect in make_json func from book with url {}!'.format(url))
+                continue
 
             soup = BeautifulSoup(response.text, 'lxml')
             title_selector = "h1"
@@ -59,18 +58,16 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
             json.dump(json_data, my_file, ensure_ascii=False)
 
 
-def download_image(collection_number, page_number, last_page, url, links):
+def download_image(collection_number, current_page, page_number, last_page, url, links):
     for tag in links:
         for tag in tag.select('img'):
             image_path = urljoin(url, tag['src'])
-            try:
-                response = requests.get(image_path, allow_redirects=False)
-                response.raise_for_status()
-                if response.status_code == 302:
-                    print('Warning, redirect in download image func from image with path {}!'.format(image_path))
-                    break
-            except requests.HTTPError as exception:
-                raise exception
+            response = requests.get(image_path, allow_redirects=False)
+            response.raise_for_status()
+            if response.status_code == 302:
+                print('Warning, redirect in download image func from image with path {}!'.format(image_path))
+                continue
+
             image_name = urljoin(url, tag['src']).split('/')[4]
             images_path = pathlib.Path("images/")
             images_path.mkdir(parents=True, exist_ok=True)
@@ -80,51 +77,45 @@ def download_image(collection_number, page_number, last_page, url, links):
                 file.write(response.content)
 
 
-def download_book_from_collection(collection_number, page_number, last_page, url, links):
+def download_book_from_collection(collection_number, current_page, page_number, last_page, url, links):
     for tag in links:
         for tag in tag.select('a'):
             book_id = urljoin(url, tag['href']).split('b')[1][:-1]
             book_url = 'http://tululu.org/b{}/'.format(book_id)
-            try:
-                response = requests.get(book_url, allow_redirects=False)
-                response.raise_for_status()
-                if response.status_code == 302:
-                    print('Warning, redirect in download book func from book with url {}!'.format(book_url))
-                    break
-            except requests.HTTPError as exception:
-                    raise exception
+            response = requests.get(book_url, allow_redirects=False)
+            response.raise_for_status()
+            if response.status_code == 302:
+                print('Warning, redirect in download book func from book with url {}!'.format(book_url))
+                continue
 
             soup = BeautifulSoup(response.text, 'lxml')
             finder_title = soup.select_one('h1')
             title = finder_title.text.strip(':').rsplit(':')[0]
+            url_to_download = "http://tululu.org/txt.php"
+            payload = {'id': book_id}
+            response = requests.get(url_to_download, params=payload, allow_redirects=False)
+            response.raise_for_status()
+            if response.status_code == 302:
+                print('Warning, redirect in download book func from book with id {}!'.format(book_id))
+                continue
 
-            for data in book_id:
-                url_to_download = "http://tululu.org/txt.php"
-                payload = {'id': book_id}
-                try:
-                    response = requests.get(url_to_download, params=payload, allow_redirects=False)
-                    response.raise_for_status()
-                    if response.status_code == 302:
-                        print('Warning, redirect in download book func from book with id {}!'.format(book_id))
-                        break
-                except requests.HTTPError as exception:
-                    raise exception
-                books_path = pathlib.Path("books/")
-                books_path.mkdir(parents=True, exist_ok=True)
-                filename = Path('books', sanitize_filename('{}. {}.txt').format(book_id, title))
+            books_path = pathlib.Path("books/")
+            books_path.mkdir(parents=True, exist_ok=True)
+            filename = Path('books', sanitize_filename('{}. {}.txt').format(book_id, title))
 
-                with open(filename, 'wb') as file:
-                    file.write(response.content)
+            with open(filename, 'wb') as file:
+                print('Download', filename)
+                file.write(response.content)
 
-                if os.stat(filename).st_size == 0:
-                    print(" Removing ", filename)
-                    os.remove(filename)
+            if os.stat(filename).st_size == 0:
+                print("Empty file! Removing... ", filename)
+                os.remove(filename)
 
 
 def main():
     parser = argparse.ArgumentParser(description='You can download books from tululu')
     parser.add_argument('-start', '--start_page', help='You can choose first page to download books', default=1, type=int)
-    parser.add_argument('-end', '--end_page', help='You can choose last page to download books', default=2, type=int)
+    parser.add_argument('-end', '--end_page', help='You can choose last page to download books', default=3, type=int)
     parser.add_argument('--skip_images', help='You can skip downloading images', action='store_const', const=True, default=False)
     parser.add_argument('--skip_txt', help='You can skip downloading books', action="store_const", const=True, default=False)
     parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
@@ -135,35 +126,39 @@ def main():
     last_page = args.end_page
     collection_number = 55
     json_data = []
-        
-    for page in range(page_number, last_page):
-        url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
+    
+    for current_page in range(page_number, last_page):
         try:
+            url = 'http://tululu.org/l{}/{}'.format(collection_number, current_page)
             response = requests.get(url, allow_redirects=False)
             response.raise_for_status()
             if response.status_code == 302:
-                        print('Warning, redirect in main func from book with url {}!'.format(url))
-                        break
-        except requests.HTTPError as exception:
-            raise exception
-        soup = BeautifulSoup(response.text, 'lxml')
-        selector = "div.bookimage"
-        links = soup.select(selector)
+                print('Warning, redirect in main func from page with url {}!'.format(url))
+                continue
 
-        if args.dest_folder:
-            os.chdir(args.dest_folder)
+            soup = BeautifulSoup(response.text, 'lxml')
+            selector = "div.bookimage"
+            links = soup.select(selector)
 
-        if not args.skip_images:
-            download_image(collection_number, page_number, last_page, url, links)
+            if args.dest_folder:
+                os.chdir(args.dest_folder)
 
-        if not args.skip_txt:
-            download_book_from_collection(collection_number, page_number, last_page, url, links)
+            if not args.skip_images:
+                download_image(collection_number, current_page, page_number, last_page, url, links)
 
-        if not args.skip_json:
-            make_json(collection_number, page_number, last_page, url, links, json_data)
+            if not args.skip_txt:
+                download_book_from_collection(collection_number, current_page, page_number, last_page, url, links)
 
-        #page_number +=1
+            if not args.skip_json:
+                make_json(collection_number, page_number, last_page, url, links, json_data)
 
+        except requests.HTTPError as error:
+            raise error
+
+        except requests.ConnectionError as error:
+            sys.stderr.write("Fatal error with connection\n")
+            sleep(10)
+            continue
 
 if __name__ == "__main__":
     main()
