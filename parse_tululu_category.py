@@ -19,9 +19,9 @@ def dir_path(string):
 
 def make_json(collection_number, page_number, last_page, url, links, json_data):
     for tag in links:
-        for url_book in tag.select('a'):
-            id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
-            url = 'http://tululu.org/b{}/'.format(id_of_book)
+        for tag in tag.select('a'):
+            book_id = urljoin(url, tag['href']).split('b')[1][:-1]
+            url = 'http://tululu.org/b{}/'.format(book_id)
             try:
                 response = requests.get(url, allow_redirects=False)
                 response.raise_for_status()
@@ -36,39 +36,33 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
             finder_title = soup.select_one(title_selector)
             title = finder_title.text.strip(':').rsplit(':')[0]
             cover_selector = "div.bookimage img"
-            for cover in soup.select(cover_selector):
-                covers = cover['src']
+            image_cover = [cover['src'] for cover in soup.select(cover_selector)]
 
             author_selector = "h1 a"
             finder_author = soup.select_one(author_selector)
             author = finder_author.text
-            book_path = 'books/{}.txt'.format(id_of_book)
+            book_path = 'books/{}.txt'.format(book_id)
 
             genre_selector = "span.d_book a"
             finder_genre = soup.select(genre_selector)
-            genres = []
-            for genre in finder_genre:
-                genres.append('{}'.format(genre.text))
+            genres = ['{}'.format(genre.text) for genre in finder_genre]
 
             comment_selector = "div.texts"
-            comments = []
-            for note in soup.select(comment_selector):
-                comment = '{}'.format(note.text).split(')')[1]
-                comments.append(comment)
+            comments = ['{}'.format(note.text).split(')')[1] for note in soup.select(comment_selector)]
 
-            to_json = {'title': title, 'image_src': covers, 'genre': genres,
+            to_json = {'title': title, 'image_src': image_cover, 'genre': genres,
                         'comments': comments, 'author': author, 'book_path': book_path}
             json_data.append(to_json)
 
-    if page_number == last_page:
+    if last_page:
         with open("books_data.json", "w", encoding='utf-8') as my_file:
             json.dump(json_data, my_file, ensure_ascii=False)
 
 
 def download_image(collection_number, page_number, last_page, url, links):
     for tag in links:
-        for url_image in tag.select('img'):
-            image_path = urljoin(url, url_image['src'])
+        for tag in tag.select('img'):
+            image_path = urljoin(url, tag['src'])
             try:
                 response = requests.get(image_path, allow_redirects=False)
                 response.raise_for_status()
@@ -77,9 +71,9 @@ def download_image(collection_number, page_number, last_page, url, links):
                     break
             except requests.HTTPError as exception:
                 raise exception
-            image_name = urljoin(url, url_image['src']).split('/')[4]
-            path_for_images = pathlib.Path("images/")
-            path_for_images.mkdir(parents=True, exist_ok=True)
+            image_name = urljoin(url, tag['src']).split('/')[4]
+            images_path = pathlib.Path("images/")
+            images_path.mkdir(parents=True, exist_ok=True)
             filename = Path('images', '{}'.format(image_name))
 
             with open(filename, 'wb') as file:
@@ -88,14 +82,14 @@ def download_image(collection_number, page_number, last_page, url, links):
 
 def download_book_from_collection(collection_number, page_number, last_page, url, links):
     for tag in links:
-        for url_book in tag.select('a'):
-            id_of_book = urljoin(url, url_book['href']).split('b')[1][:-1]
-            url_of_book = 'http://tululu.org/b{}/'.format(id_of_book)
+        for tag in tag.select('a'):
+            book_id = urljoin(url, tag['href']).split('b')[1][:-1]
+            book_url = 'http://tululu.org/b{}/'.format(book_id)
             try:
-                response = requests.get(url_of_book, allow_redirects=False)
+                response = requests.get(book_url, allow_redirects=False)
                 response.raise_for_status()
                 if response.status_code == 302:
-                    print('Warning, redirect in download book func from book with url {}!'.format(url_of_book))
+                    print('Warning, redirect in download book func from book with url {}!'.format(book_url))
                     break
             except requests.HTTPError as exception:
                     raise exception
@@ -104,20 +98,20 @@ def download_book_from_collection(collection_number, page_number, last_page, url
             finder_title = soup.select_one('h1')
             title = finder_title.text.strip(':').rsplit(':')[0]
 
-            for data in id_of_book:
+            for data in book_id:
                 url_to_download = "http://tululu.org/txt.php"
-                payload = {'id': id_of_book}
+                payload = {'id': book_id}
                 try:
                     response = requests.get(url_to_download, params=payload, allow_redirects=False)
                     response.raise_for_status()
                     if response.status_code == 302:
-                        print('Warning, redirect in download book func from book with id {}!'.format(id_of_book))
+                        print('Warning, redirect in download book func from book with id {}!'.format(book_id))
                         break
                 except requests.HTTPError as exception:
                     raise exception
-                path_for_books = pathlib.Path("books/")
-                path_for_books.mkdir(parents=True, exist_ok=True)
-                filename = Path('books', sanitize_filename('{}. {}.txt').format(id_of_book, title))
+                books_path = pathlib.Path("books/")
+                books_path.mkdir(parents=True, exist_ok=True)
+                filename = Path('books', sanitize_filename('{}. {}.txt').format(book_id, title))
 
                 with open(filename, 'wb') as file:
                     file.write(response.content)
@@ -142,7 +136,7 @@ def main():
     collection_number = 55
     json_data = []
         
-    while page_number <= last_page:
+    for page in range(page_number, last_page):
         url = 'http://tululu.org/l{}/{}'.format(collection_number, page_number)
         try:
             response = requests.get(url, allow_redirects=False)
@@ -168,7 +162,7 @@ def main():
         if not args.skip_json:
             make_json(collection_number, page_number, last_page, url, links, json_data)
 
-        page_number +=1
+        #page_number +=1
 
 
 if __name__ == "__main__":
