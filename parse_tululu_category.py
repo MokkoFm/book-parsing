@@ -12,6 +12,9 @@ import argparse
 import sys 
 from time import sleep
 
+class RedirectException(Exception):
+       pass
+
 def dir_path(string):
     if os.path.isdir(string):
         return string
@@ -19,18 +22,7 @@ def dir_path(string):
         raise NotADirectoryError(string)
 
 
-def make_json(collection_number, page_number, last_page, url, links, json_data):
-    for tag in links:
-        for tag in tag.select('a'):
-            book_href = urljoin(url, tag['href'])
-            book_id = book_href.split('b')[1][:-1]
-            url = 'http://tululu.org/b{}/'.format(book_id)
-            response = requests.get(url, allow_redirects=False)
-            response.raise_for_status()
-            if response.status_code == 302:
-                print('Warning, redirect in make_json func from book with url {}!'.format(url))
-                continue
-
+def make_json(last_page, json_data, book_id, response):
             soup = BeautifulSoup(response.text, 'lxml')
             title_selector = "h1"
             finder_title = soup.select_one(title_selector)
@@ -38,16 +30,13 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
             title = title_text.strip(':').rsplit(':')[0]
             cover_selector = "div.bookimage img"
             image_cover = [cover['src'] for cover in soup.select(cover_selector)]
-
             author_selector = "h1 a"
             finder_author = soup.select_one(author_selector)
             author = finder_author.text
             book_path = 'books/{}.txt'.format(book_id)
-
             genre_selector = "span.d_book a"
             finder_genre = soup.select(genre_selector)
             genres = [genre.text for genre in finder_genre]
-
             comment_selector = "div.texts"
             comments = [comment.text.split(')')[1] for comment in soup.select(comment_selector)]
 
@@ -55,23 +44,13 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
                         'comments': comments, 'author': author, 'book_path': book_path}
             json_data.append(to_json)
 
-    if last_page:
-        with open("books_data.json", "w", encoding='utf-8') as my_file:
-            json.dump(json_data, my_file, ensure_ascii=False)
+            if last_page:
+                with open("books_data.json", "w", encoding='utf-8') as my_file:
+                    json.dump(json_data, my_file, ensure_ascii=False)
 
 
-def download_image(collection_number, current_page, page_number, last_page, url, links):
-    for tag in links:
-        for tag in tag.select('img'):
-            image_path = urljoin(url, tag['src'])
-            response = requests.get(image_path, allow_redirects=False)
-            response.raise_for_status()
-            if response.status_code == 302:
-                print('Warning, redirect in download image func from image with path {}!'.format(image_path))
-                continue
-
-            image_src = urljoin(url, tag['src'])
-            image_name = image_src.split('/')[4]
+def download_image(image_url, response):
+            image_name = image_url.split('/')[4]
             images_path = pathlib.Path("images/")
             images_path.mkdir(parents=True, exist_ok=True)
             filename = Path('images', '{}'.format(image_name))
@@ -80,29 +59,20 @@ def download_image(collection_number, current_page, page_number, last_page, url,
                 file.write(response.content)
 
 
-def download_book_from_collection(collection_number, current_page, page_number, last_page, url, links):
-    for tag in links:
-        for tag in tag.select('a'):
-            book_href = urljoin(url, tag['href'])
-            book_id = book_href.split('b')[1][:-1]
-            book_url = 'http://tululu.org/b{}/'.format(book_id)
-            response = requests.get(book_url, allow_redirects=False)
-            response.raise_for_status()
-            if response.status_code == 302:
-                print('Warning, redirect in download book func from book with url {}!'.format(book_url))
-                continue
-
+def download_book(book_id, response):
             soup = BeautifulSoup(response.text, 'lxml')
             finder_title = soup.select_one('h1')
             title_text = finder_title.text
             title = title_text.strip(':').rsplit(':')[0]
             url_to_download = "http://tululu.org/txt.php"
             payload = {'id': book_id}
-            response = requests.get(url_to_download, params=payload, allow_redirects=False)
-            response.raise_for_status()
-            if response.status_code == 302:
-                print('Warning, redirect in download book func from book with id {}!'.format(book_id))
-                continue
+            try: 
+                response = requests.get(url_to_download, params=payload, allow_redirects=False)
+                response.raise_for_status()
+                if response.status_code == 302:
+                    raise RedirectException('Warning, redirect!')
+            except RedirectException as error:
+                print(error)
 
             books_path = pathlib.Path("books/")
             books_path.mkdir(parents=True, exist_ok=True)
@@ -138,24 +108,46 @@ def main():
             response = requests.get(url, allow_redirects=False)
             response.raise_for_status()
             if response.status_code == 302:
-                print('Warning, redirect in main func from page with url {}!'.format(url))
-                continue
+                raise RedirectException('Warning, redirect!')
 
             soup = BeautifulSoup(response.text, 'lxml')
             selector = "div.bookimage"
             links = soup.select(selector)
 
-            if args.dest_folder:
-                os.chdir(args.dest_folder)
+            for tag in links:
+                for tag in tag.select('a'):
+                    book_href = urljoin(url, tag['href'])
+                    book_id = book_href.split('b')[1][:-1]
+                    book_url = 'http://tululu.org/b{}/'.format(book_id)
+                    try:
+                        response = requests.get(book_url, allow_redirects=False)
+                        response.raise_for_status()
+                        if response.status_code == 302:
+                            raise RedirectException('Warning, redirect!')
+                    except RedirectException as error:
+                        print(error)
 
-            if not args.skip_images:
-                download_image(collection_number, current_page, page_number, last_page, url, links)
+                    if args.dest_folder:
+                        os.chdir(args.dest_folder)
 
-            if not args.skip_txt:
-                download_book_from_collection(collection_number, current_page, page_number, last_page, url, links)
+                    if not args.skip_txt:
+                        download_book(book_id, response)
 
-            if not args.skip_json:
-                make_json(collection_number, page_number, last_page, url, links, json_data)
+                    if not args.skip_json:
+                        make_json(last_page, json_data, book_id, response)
+
+                for tag in tag.select('img'):
+                    image_url = urljoin(url, tag['src'])
+                    try:
+                        response = requests.get(image_url, allow_redirects=False)
+                        response.raise_for_status()
+                        if response.status_code == 302:
+                            raise RedirectException('Warning, redirect!')
+                    except RedirectException as error:
+                        print(error)
+
+                    if not args.skip_images:
+                        download_image(image_url, response)
 
         except requests.HTTPError as error:
             sys.stderr.write("Fatal error with URL\n", error)
@@ -165,6 +157,9 @@ def main():
             sys.stderr.write("Fatal error with connection\n", error)
             sleep(10)
             continue
+
+        except RedirectException as error:
+            print(error)
 
 if __name__ == "__main__":
     main()
