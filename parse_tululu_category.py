@@ -22,7 +22,8 @@ def dir_path(string):
 def make_json(collection_number, page_number, last_page, url, links, json_data):
     for tag in links:
         for tag in tag.select('a'):
-            book_id = urljoin(url, tag['href']).split('b')[1][:-1]
+            book_href = urljoin(url, tag['href'])
+            book_id = book_href.split('b')[1][:-1]
             url = 'http://tululu.org/b{}/'.format(book_id)
             response = requests.get(url, allow_redirects=False)
             response.raise_for_status()
@@ -33,7 +34,8 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
             soup = BeautifulSoup(response.text, 'lxml')
             title_selector = "h1"
             finder_title = soup.select_one(title_selector)
-            title = finder_title.text.strip(':').rsplit(':')[0]
+            title_text = finder_title.text
+            title = title_text.strip(':').rsplit(':')[0]
             cover_selector = "div.bookimage img"
             image_cover = [cover['src'] for cover in soup.select(cover_selector)]
 
@@ -44,10 +46,10 @@ def make_json(collection_number, page_number, last_page, url, links, json_data):
 
             genre_selector = "span.d_book a"
             finder_genre = soup.select(genre_selector)
-            genres = ['{}'.format(genre.text) for genre in finder_genre]
+            genres = [genre.text for genre in finder_genre]
 
             comment_selector = "div.texts"
-            comments = ['{}'.format(note.text).split(')')[1] for note in soup.select(comment_selector)]
+            comments = [comment.text.split(')')[1] for comment in soup.select(comment_selector)]
 
             to_json = {'title': title, 'image_src': image_cover, 'genre': genres,
                         'comments': comments, 'author': author, 'book_path': book_path}
@@ -68,7 +70,8 @@ def download_image(collection_number, current_page, page_number, last_page, url,
                 print('Warning, redirect in download image func from image with path {}!'.format(image_path))
                 continue
 
-            image_name = urljoin(url, tag['src']).split('/')[4]
+            image_src = urljoin(url, tag['src'])
+            image_name = image_src.split('/')[4]
             images_path = pathlib.Path("images/")
             images_path.mkdir(parents=True, exist_ok=True)
             filename = Path('images', '{}'.format(image_name))
@@ -80,7 +83,8 @@ def download_image(collection_number, current_page, page_number, last_page, url,
 def download_book_from_collection(collection_number, current_page, page_number, last_page, url, links):
     for tag in links:
         for tag in tag.select('a'):
-            book_id = urljoin(url, tag['href']).split('b')[1][:-1]
+            book_href = urljoin(url, tag['href'])
+            book_id = book_href.split('b')[1][:-1]
             book_url = 'http://tululu.org/b{}/'.format(book_id)
             response = requests.get(book_url, allow_redirects=False)
             response.raise_for_status()
@@ -90,7 +94,8 @@ def download_book_from_collection(collection_number, current_page, page_number, 
 
             soup = BeautifulSoup(response.text, 'lxml')
             finder_title = soup.select_one('h1')
-            title = finder_title.text.strip(':').rsplit(':')[0]
+            title_text = finder_title.text
+            title = title_text.strip(':').rsplit(':')[0]
             url_to_download = "http://tululu.org/txt.php"
             payload = {'id': book_id}
             response = requests.get(url_to_download, params=payload, allow_redirects=False)
@@ -153,10 +158,11 @@ def main():
                 make_json(collection_number, page_number, last_page, url, links, json_data)
 
         except requests.HTTPError as error:
-            raise error
+            sys.stderr.write("Fatal error with URL\n", error)
+            continue
 
         except requests.ConnectionError as error:
-            sys.stderr.write("Fatal error with connection\n")
+            sys.stderr.write("Fatal error with connection\n", error)
             sleep(10)
             continue
 
