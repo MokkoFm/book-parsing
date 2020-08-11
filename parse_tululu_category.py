@@ -24,30 +24,29 @@ def dir_path(string):
         raise NotADirectoryError(string)
 
 
-def make_json(last_page, json_data, book_id, response):
-    soup = BeautifulSoup(response.text, 'lxml')
-    title_selector = "h1"
-    finder_title = soup.select_one(title_selector)
-    title_text = finder_title.text
-    title = title_text.strip(':').rsplit(':')[0]
+def check_response(response):
+    response.raise_for_status()
+    if response.status_code == 302:
+        raise RedirectException('Warning, redirect!')
+
+
+def make_json(last_page, json_data, book_id, response, soup):
+    title_selector = soup.select_one("h1")
+    title_text = title_selector.text
+    title_for_json = title_text.strip(':').rsplit(':')[0]
     cover_selector = "div.bookimage img"
     image_cover = [cover['src'] for cover in soup.select(cover_selector)]
-    author_selector = "h1 a"
-    finder_author = soup.select_one(author_selector)
-    author = finder_author.text
+    author_title = soup.select_one("h1 a")
+    author = author_title.text
     book_path = 'books/{}.txt'.format(book_id)
-    genre_selector = "span.d_book a"
-    finder_genre = soup.select(genre_selector)
-    genres = [genre.text for genre in finder_genre]
+    genre_selector = soup.select("span.d_book a")
+    genres = [genre.text for genre in genre_selector]
     comment_selector = "div.texts"
-    comments = [comment.text.split(')')[1] for comment in soup.select(comment_selector)]
-
-    to_json = {'title': title, 'image_src': image_cover, 'genre': genres, 'comments': comments, 'author': author, 'book_path': book_path}
+    comments = [comment.text.split(')')[1]
+                for comment in soup.select(comment_selector)]
+    to_json = {'title': title_for_json, 'image_src': image_cover, 'genre': genres,
+               'comments': comments, 'author': author, 'book_path': book_path}
     json_data.append(to_json)
-
-    if last_page:
-        with open("books_data.json", "w", encoding='utf-8') as my_file:
-            json.dump(json_data, my_file, ensure_ascii=False)
 
 
 def download_image(image_url, response):
@@ -60,18 +59,16 @@ def download_image(image_url, response):
         file.write(response.content)
 
 
-def download_book(book_id, response):
-    soup = BeautifulSoup(response.text, 'lxml')
+def download_book(book_id, response, soup):
     finder_title = soup.select_one('h1')
     title_text = finder_title.text
     title = title_text.strip(':').rsplit(':')[0]
     url_to_download = "http://tululu.org/txt.php"
     payload = {'id': book_id}
     try:
-        response = requests.get(url_to_download, params=payload, allow_redirects=False)
-        response.raise_for_status()
-        if response.status_code == 302:
-            raise RedirectException('Warning, redirect!')
+        response = requests.get(
+            url_to_download, params=payload, allow_redirects=False)
+        check_response(response)
     except RedirectException as error:
         print(error)
 
@@ -89,16 +86,27 @@ def download_book(book_id, response):
         os.remove(filename)
 
 
-def main():
-    parser = argparse.ArgumentParser(description='You can download books from tululu')
-    parser.add_argument('-start', '--start_page', help='You can choose first page to download books', default=1, type=int)
-    parser.add_argument('-end', '--end_page', help='You can choose last page to download books', default=3, type=int)
-    parser.add_argument('--skip_images', help='You can skip downloading images',action='store_const', const=True, default=False)
-    parser.add_argument('--skip_txt', help='You can skip downloading books', action="store_const", const=True, default=False)
-    parser.add_argument('--skip_json', help='You can skip downloading json', action='store_const', const=True, default=False)
-    parser.add_argument('--dest_folder', help="You can choose destination folder for files", type=dir_path)
+def make_parser_args():
+    parser = argparse.ArgumentParser(
+        description='You can download books from tululu')
+    parser.add_argument('-start', '--start_page',
+                        help='Choose first page', default=1, type=int)
+    parser.add_argument('-end', '--end_page',
+                        help='Choose last page', default=3, type=int)
+    parser.add_argument('--skip_images', help='Skip downloading images',
+                        action='store_const', const=True, default=False)
+    parser.add_argument('--skip_txt', help='Skip downloading books',
+                        action="store_const", const=True, default=False)
+    parser.add_argument('--skip_json', help='Skip downloading json',
+                        action='store_const', const=True, default=False)
+    parser.add_argument('--dest_folder',
+                        help="Choose destination folder", type=dir_path)
     args = parser.parse_args()
+    return args
 
+
+def main():
+    args = make_parser_args()
     page_number = args.start_page
     last_page = args.end_page
     collection_number = 55
@@ -106,50 +114,51 @@ def main():
 
     for current_page in range(page_number, last_page):
         try:
-            url = 'http://tululu.org/l{}/{}'.format(collection_number, current_page)
+            url = 'http://tululu.org/l{}/{}'.format(
+                collection_number, current_page)
             response = requests.get(url, allow_redirects=False)
-            response.raise_for_status()
-            if response.status_code == 302:
-                raise RedirectException('Warning, redirect!')
-
-            soup = BeautifulSoup(response.text, 'lxml')
+            check_response(response)
+            collection_soup = BeautifulSoup(response.text, 'lxml')
             selector = "div.bookimage"
-            links = soup.select(selector)
+            books_info = collection_soup.select(selector)
 
             if args.dest_folder:
                 os.chdir(args.dest_folder)
 
-            for tag in links:
-                for tag in tag.select('a'):
-                    book_href = urljoin(url, tag['href'])
+            for tag in books_info:
+                for book in tag.select('a'):
+                    book_href = urljoin(url, book['href'])
                     book_id = book_href.split('b')[1][:-1]
                     book_url = 'http://tululu.org/b{}/'.format(book_id)
                     try:
                         response = requests.get(book_url, allow_redirects=False)
-                        response.raise_for_status()
-                        if response.status_code == 302:
-                            raise RedirectException('Warning, redirect!')
+                        check_response(response)
+                    
                     except RedirectException as error:
                         print(error)
+                        
 
+                    soup = BeautifulSoup(response.text, 'lxml')                        
                     if not args.skip_txt:
-                        download_book(book_id, response)
+                        download_book(book_id, response, soup)
 
                     if not args.skip_json:
-                        make_json(last_page, json_data, book_id, response)
-
-                for tag in tag.select('img'):
-                    image_url = urljoin(url, tag['src'])
+                        make_json(last_page, json_data, book_id, response, soup)
+                    
+                for book in tag.select('img'):
+                    image_url = urljoin(url, book['src'])
                     try:
                         response = requests.get(image_url, allow_redirects=False)
-                        response.raise_for_status()
-                        if response.status_code == 302:
-                            raise RedirectException('Warning, redirect!')
+                        check_response(response)
                     except RedirectException as error:
                         print(error)
 
                     if not args.skip_images:
                         download_image(image_url, response)
+
+            if last_page:
+                with open("books_data.json", "w", encoding='utf-8') as my_file:
+                    json.dump(json_data, my_file, ensure_ascii=False)
 
         except requests.HTTPError as error:
             sys.stderr.write("Fatal error with URL\n", error)
