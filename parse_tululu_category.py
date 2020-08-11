@@ -35,7 +35,7 @@ def make_json(last_page, json_data, book_id, response, soup):
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0]
     cover_selector = "div.bookimage img"
-    image_cover = [cover['src'] for cover in soup.select(cover_selector)]
+    image_cover = [urljoin("http://tululu.org", cover['src']) for cover in soup.select(cover_selector)]
     author_title = soup.select_one("h1 a")
     author = author_title.text
     book_path = 'books/{}.txt'.format(book_id)
@@ -132,18 +132,16 @@ def main():
                     book_url = 'http://tululu.org/b{}/'.format(book_id)
                     try:
                         response = requests.get(book_url, allow_redirects=False)
-                        check_response(response)
-                    
+                        check_response(response)                        
+                        soup = BeautifulSoup(response.text, 'lxml')                        
+                        if not args.skip_txt:
+                            download_book(book_id, response, soup)
+
+                        if not args.skip_json:
+                            make_json(last_page, json_data, book_id, response, soup)
+
                     except RedirectException as error:
                         print(error)
-                        
-
-                    soup = BeautifulSoup(response.text, 'lxml')                        
-                    if not args.skip_txt:
-                        download_book(book_id, response, soup)
-
-                    if not args.skip_json:
-                        make_json(last_page, json_data, book_id, response, soup)
                     
                 for book in tag.select('img'):
                     image_url = urljoin(url, book['src'])
