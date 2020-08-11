@@ -35,7 +35,8 @@ def make_json(last_page, json_data, book_id, response, soup):
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0]
     cover_selector = "div.bookimage img"
-    image_cover = [urljoin("http://tululu.org", cover['src']) for cover in soup.select(cover_selector)]
+    image_cover = [urljoin("http://tululu.org", cover['src'])
+                   for cover in soup.select(cover_selector)]
     author_title = soup.select_one("h1 a")
     author = author_title.text
     book_path = 'books/{}.txt'.format(book_id)
@@ -44,8 +45,9 @@ def make_json(last_page, json_data, book_id, response, soup):
     comment_selector = "div.texts"
     comments = [comment.text.split(')')[1]
                 for comment in soup.select(comment_selector)]
-    to_json = {'title': title_for_json, 'image_src': image_cover, 'genre': genres,
-               'comments': comments, 'author': author, 'book_path': book_path}
+    to_json = {'title': title_for_json, 'image_src': image_cover,
+               'genre': genres, 'comments': comments,
+               'author': author, 'book_path': book_path}
     json_data.append(to_json)
 
 
@@ -131,22 +133,25 @@ def main():
                     book_id = book_href.split('b')[1][:-1]
                     book_url = 'http://tululu.org/b{}/'.format(book_id)
                     try:
-                        response = requests.get(book_url, allow_redirects=False)
-                        check_response(response)                        
-                        soup = BeautifulSoup(response.text, 'lxml')                        
+                        response = requests.get(
+                            book_url, allow_redirects=False)
+                        check_response(response)
+                        soup = BeautifulSoup(response.text, 'lxml')
                         if not args.skip_txt:
                             download_book(book_id, response, soup)
 
                         if not args.skip_json:
-                            make_json(last_page, json_data, book_id, response, soup)
+                            make_json(last_page, json_data,
+                                      book_id, response, soup)
 
                     except RedirectException as error:
                         print(error)
-                    
+
                 for book in tag.select('img'):
                     image_url = urljoin(url, book['src'])
                     try:
-                        response = requests.get(image_url, allow_redirects=False)
+                        response = requests.get(
+                            image_url, allow_redirects=False)
                         check_response(response)
                     except RedirectException as error:
                         print(error)
