@@ -121,12 +121,12 @@ def main():
             check_response(response)
             collection_soup = BeautifulSoup(response.text, 'lxml')
             selector = "div.bookimage"
-            books_info = collection_soup.select(selector)
+            books = collection_soup.select(selector)
 
             if args.dest_folder:
                 os.chdir(args.dest_folder)
 
-            for tag in books_info:
+            for tag in books:
                 for book in tag.select('img'):
                     image_url = urljoin(url, book['src'])
                     try:
@@ -158,7 +158,7 @@ def main():
                         print(error)
 
             if last_page:
-                with open("books_data.json", "w", encoding='utf-8') as my_file:
+                with open("books.json", "w", encoding='utf-8') as my_file:
                     json.dump(json_data, my_file, ensure_ascii=False)
 
         except requests.HTTPError as error:
