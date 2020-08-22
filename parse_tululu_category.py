@@ -29,7 +29,7 @@ def check_response(response):
         raise RedirectException('Warning, redirect!')
 
 
-def make_json(json_data, book_id, soup, image_url):
+def serialize_book(book_id, soup, image_url):
     title_selector = soup.select_one("h1")
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0].strip()
@@ -47,7 +47,7 @@ def make_json(json_data, book_id, soup, image_url):
     to_json = {'title': title_for_json, 'image_src': image_path,
                'genre': genres, 'comments': comments,
                'author': author, 'book_path': book_path}
-    json_data.append(to_json)
+    return to_json
 
 
 def download_image(image_url, response):
@@ -149,10 +149,11 @@ def main():
                         check_response(response)
                         soup = BeautifulSoup(response.text, 'lxml')
                         if not args.skip_txt:
-                            download_book(book_id, response, soup,)
+                            download_book(book_id, response, soup)
 
                         if not args.skip_json:
-                            make_json(json_data, book_id, soup, image_url)
+                            to_json = serialize_book(book_id, soup, image_url)
+                            json_data.append(to_json)
 
                     except RedirectException as error:
                         print(error)
