@@ -7,7 +7,6 @@ from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
 import json
-import pprint
 import argparse
 import sys
 from time import sleep
@@ -30,22 +29,22 @@ def check_response(response):
         raise RedirectException('Warning, redirect!')
 
 
-def make_json(last_page, json_data, book_id, response, soup):
+def make_json(json_data, book_id, soup, image_url):
     title_selector = soup.select_one("h1")
     title_text = title_selector.text
-    title_for_json = title_text.strip(':').rsplit(':')[0]
-    cover_selector = "div.bookimage img"
-    image_cover = [urljoin("http://tululu.org", cover['src'])
-                   for cover in soup.select(cover_selector)]
+    title_for_json = title_text.strip(':').rsplit(':')[0].strip()
+    dirname = os.path.dirname(__file__) 
+    image_name = image_url.split('/')[4]
+    image_path = os.path.join(dirname, "images", image_name)
+    book_path = os.path.join(dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
     author_title = soup.select_one("h1 a")
     author = author_title.text
-    book_path = 'books/{}.txt'.format(book_id)
     genre_selector = soup.select("span.d_book a")
     genres = [genre.text for genre in genre_selector]
     comment_selector = "div.texts"
     comments = [comment.text.split(')')[1]
                 for comment in soup.select(comment_selector)]
-    to_json = {'title': title_for_json, 'image_src': image_cover,
+    to_json = {'title': title_for_json, 'image_src': image_path,
                'genre': genres, 'comments': comments,
                'author': author, 'book_path': book_path}
     json_data.append(to_json)
@@ -64,7 +63,7 @@ def download_image(image_url, response):
 def download_book(book_id, response, soup):
     finder_title = soup.select_one('h1')
     title_text = finder_title.text
-    title = title_text.strip(':').rsplit(':')[0]
+    title = title_text.strip(':').rsplit(':')[0].strip()
     url_to_download = "http://tululu.org/txt.php"
     payload = {'id': book_id}
     try:
@@ -128,25 +127,6 @@ def main():
                 os.chdir(args.dest_folder)
 
             for tag in books_info:
-                for book in tag.select('a'):
-                    book_href = urljoin(url, book['href'])
-                    book_id = book_href.split('b')[1][:-1]
-                    book_url = 'http://tululu.org/b{}/'.format(book_id)
-                    try:
-                        response = requests.get(
-                            book_url, allow_redirects=False)
-                        check_response(response)
-                        soup = BeautifulSoup(response.text, 'lxml')
-                        if not args.skip_txt:
-                            download_book(book_id, response, soup)
-
-                        if not args.skip_json:
-                            make_json(last_page, json_data,
-                                      book_id, response, soup)
-
-                    except RedirectException as error:
-                        print(error)
-
                 for book in tag.select('img'):
                     image_url = urljoin(url, book['src'])
                     try:
@@ -158,6 +138,24 @@ def main():
 
                     if not args.skip_images:
                         download_image(image_url, response)
+
+                for book in tag.select('a'):
+                    book_href = urljoin(url, book['href'])
+                    book_id = book_href.split('b')[1][:-1]
+                    book_url = 'http://tululu.org/b{}/'.format(book_id)
+                    try:
+                        response = requests.get(
+                            book_url, allow_redirects=False)
+                        check_response(response)
+                        soup = BeautifulSoup(response.text, 'lxml')
+                        if not args.skip_txt:
+                            download_book(book_id, response, soup,)
+
+                        if not args.skip_json:
+                            make_json(json_data, book_id, soup, image_url)
+
+                    except RedirectException as error:
+                        print(error)
 
             if last_page:
                 with open("books_data.json", "w", encoding='utf-8') as my_file:
