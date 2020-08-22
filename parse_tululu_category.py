@@ -95,11 +95,11 @@ def make_parser_args():
     parser.add_argument('-end', '--end_page',
                         help='Choose last page', default=3, type=int)
     parser.add_argument('--skip_images', help='Skip downloading images',
-                        action='store_const', const=True, default=False)
+                        action='store_true', default=False)
     parser.add_argument('--skip_txt', help='Skip downloading books',
-                        action="store_const", const=True, default=False)
+                        action="store_true", default=False)
     parser.add_argument('--skip_json', help='Skip downloading json',
-                        action='store_const', const=True, default=False)
+                        action='store_true', default=False)
     parser.add_argument('--dest_folder',
                         help="Choose destination folder", type=dir_path)
     args = parser.parse_args()
