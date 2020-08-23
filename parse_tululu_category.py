@@ -54,7 +54,7 @@ def download_image(image_url, response):
     image_name = image_url.split('/')[4]
     images_path = pathlib.Path("images/")
     images_path.mkdir(parents=True, exist_ok=True)
-    filename = Path('images', '{}'.format(image_name))
+    filename = Path('images', str(image_name))
 
     with open(filename, 'wb') as file:
         file.write(response.content)
@@ -106,6 +106,28 @@ def make_parser_args():
     return args
 
 
+def find_books(collection_number, current_page):
+    url = 'http://tululu.org/l{}/{}'.format(
+                collection_number, current_page)
+    response = requests.get(url, allow_redirects=False)
+    check_response(response)
+    collection_soup = BeautifulSoup(response.text, 'lxml')
+    selector = "div.bookimage"
+    books = collection_soup.select(selector)
+    return books, url
+
+
+def get_image_url(url, book):
+    image_url = urljoin(url, book['src'])
+    try:
+        response = requests.get(
+            image_url, allow_redirects=False)
+        check_response(response)
+    except RedirectException as error:
+        print(error)
+    return image_url, response
+
+
 def main():
     args = make_parser_args()
     page_number = args.start_page
@@ -115,27 +137,13 @@ def main():
 
     for current_page in range(page_number, last_page):
         try:
-            url = 'http://tululu.org/l{}/{}'.format(
-                collection_number, current_page)
-            response = requests.get(url, allow_redirects=False)
-            check_response(response)
-            collection_soup = BeautifulSoup(response.text, 'lxml')
-            selector = "div.bookimage"
-            books = collection_soup.select(selector)
-
+            books, url = find_books(collection_number, current_page)
             if args.dest_folder:
                 os.chdir(args.dest_folder)
 
             for tag in books:
                 for book in tag.select('img'):
-                    image_url = urljoin(url, book['src'])
-                    try:
-                        response = requests.get(
-                            image_url, allow_redirects=False)
-                        check_response(response)
-                    except RedirectException as error:
-                        print(error)
-
+                    image_url, response = get_image_url(url, book)
                     if not args.skip_images:
                         download_image(image_url, response)
 
