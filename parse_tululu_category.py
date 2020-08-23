@@ -128,6 +128,20 @@ def get_image_url(url, book):
     return image_url, response
 
 
+def get_book_url(url, book):
+    book_href = urljoin(url, book['href'])
+    book_id = book_href.split('b')[1][:-1]
+    book_url = 'http://tululu.org/b{}/'.format(book_id)
+    try:
+        response = requests.get(
+                book_url, allow_redirects=False)
+        check_response(response)
+        soup = BeautifulSoup(response.text, 'lxml')
+    except RedirectException as error:
+        print(error)
+    return book_id, response, soup
+
+
 def main():
     args = make_parser_args()
     page_number = args.start_page
@@ -148,23 +162,13 @@ def main():
                         download_image(image_url, response)
 
                 for book in tag.select('a'):
-                    book_href = urljoin(url, book['href'])
-                    book_id = book_href.split('b')[1][:-1]
-                    book_url = 'http://tululu.org/b{}/'.format(book_id)
-                    try:
-                        response = requests.get(
-                            book_url, allow_redirects=False)
-                        check_response(response)
-                        soup = BeautifulSoup(response.text, 'lxml')
-                        if not args.skip_txt:
-                            download_book(book_id, response, soup)
+                    book_id, response, soup = get_book_url(url, book)
+                    if not args.skip_txt:
+                        download_book(book_id, response, soup)
 
-                        if not args.skip_json:
-                            to_json = serialize_book(book_id, soup, image_url)
-                            json_data.append(to_json)
-
-                    except RedirectException as error:
-                        print(error)
+                    if not args.skip_json:
+                        to_json = serialize_book(book_id, soup, image_url)
+                        json_data.append(to_json)
 
             if last_page:
                 with open("books.json", "w", encoding='utf-8') as my_file:
