@@ -31,14 +31,14 @@ def check_response(response):
         raise RedirectException('Warning, redirect!')
 
 
-def serialize_book(book_id, soup, image_url):
+def serialize_book(book_id, soup, image_name):
     title_selector = soup.select_one("h1")
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0].strip()
     dirname = os.path.dirname(__file__)
-    image_name = image_url.split('/')[4]
     image_path = os.path.join(dirname, "images", image_name)
-    book_path = os.path.join(dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
+    book_path = os.path.join(
+        dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
     author_title = soup.select_one("h1 a")
     author = author_title.text
     genre_selector = soup.select("span.d_book a")
@@ -52,10 +52,8 @@ def serialize_book(book_id, soup, image_url):
     return to_json
 
 
-def download_image(url, book):
+def download_image(image_url, image_name):
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    image_url = urljoin(url, book['src'])
-    image_name = image_url.split('/')[-1]
     images_path = pathlib.Path("images/")
     images_path.mkdir(parents=True, exist_ok=True)
     if image_name == 'nopic.gif':
@@ -118,7 +116,7 @@ def make_parser_args():
 
 def find_books(collection_number, current_page):
     url = 'http://tululu.org/l{}/{}'.format(
-                collection_number, current_page)
+        collection_number, current_page)
     try:
         response = requests.get(url, allow_redirects=False)
         check_response(response)
@@ -136,7 +134,7 @@ def get_book_url(url, book):
     book_url = 'http://tululu.org/b{}/'.format(book_id)
     try:
         response = requests.get(
-                book_url, allow_redirects=False)
+            book_url, allow_redirects=False)
         check_response(response)
         soup = BeautifulSoup(response.text, 'lxml')
     except RedirectException as error:
@@ -159,29 +157,32 @@ def main():
 
             for tag in books:
                 for book in tag.select('img'):
+                    image_url = urljoin(url, book['src'])
+                    image_name = image_url.split('/')[-1]
                     if not args.skip_images:
-                        image_url = download_image(url, book)
+                        download_image(image_url, image_name)
 
                 for book in tag.select('a'):
                     book_id, response, soup = get_book_url(url, book)
                     if not args.skip_txt:
-                        download_book(book_id, response, soup)
+                        try:
+                            download_book(book_id, response, soup)
+                        except requests.HTTPError as error:
+                            sys.stderr.write("Error with URL\n", error)
+                            continue
+                        except requests.ConnectionError as error:
+                            sys.stderr.write("Error with connection\n", error)
+                            sleep(15)
+                            continue
 
                     if not args.skip_json:
-                        to_json = serialize_book(book_id, soup, image_url)
+                        to_json = serialize_book(book_id, soup, image_name)
                         json_data.append(to_json)
                         if last_page:
-                            with open("books.json", "w", encoding='utf-8') as my_file:
-                                json.dump(json_data, my_file, ensure_ascii=False)
-
-        except requests.HTTPError as error:
-            sys.stderr.write("Fatal error with URL\n", error)
-            continue
-
-        except requests.ConnectionError as error:
-            sys.stderr.write("Fatal error with connection\n", error)
-            sleep(10)
-            continue
+                            with open("books.json", "w",
+                                      encoding='utf-8') as my_file:
+                                json.dump(json_data, my_file,
+                                          ensure_ascii=False)
 
         except RedirectException as error:
             print(error)
