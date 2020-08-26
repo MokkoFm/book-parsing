@@ -11,6 +11,7 @@ import argparse
 import sys
 from time import sleep
 import urllib.request
+import time
 
 
 class RedirectException(Exception):
@@ -52,18 +53,20 @@ def serialize_book(book_id, soup, image_url):
 
 
 def download_image(url, book):
+    timestr = time.strftime("%Y%m%d-%H%M%S")
     image_url = urljoin(url, book['src'])
     image_name = image_url.split('/')[-1]
     images_path = pathlib.Path("images/")
     images_path.mkdir(parents=True, exist_ok=True)
-    filename = Path('images', str(image_name))
-
+    if image_name == 'nopic.gif':
+        filename = Path('images', str(image_name))
+    else:
+        filename = Path('images', timestr + '-' + str(image_name))
     image = urllib.request.urlopen(image_url)
 
     with open(filename, 'wb') as file:
         content = image.read()
         file.write(content)
-    
     return image_url
 
 
@@ -167,10 +170,9 @@ def main():
                     if not args.skip_json:
                         to_json = serialize_book(book_id, soup, image_url)
                         json_data.append(to_json)
-
-            if last_page:
-                with open("books.json", "w", encoding='utf-8') as my_file:
-                    json.dump(json_data, my_file, ensure_ascii=False)
+                        if last_page:
+                            with open("books.json", "w", encoding='utf-8') as my_file:
+                                json.dump(json_data, my_file, ensure_ascii=False)
 
         except requests.HTTPError as error:
             sys.stderr.write("Fatal error with URL\n", error)
