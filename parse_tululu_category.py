@@ -10,6 +10,7 @@ import json
 import argparse
 import sys
 from time import sleep
+import urllib.request
 
 
 class RedirectException(Exception):
@@ -33,7 +34,7 @@ def serialize_book(book_id, soup, image_url):
     title_selector = soup.select_one("h1")
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0].strip()
-    dirname = os.path.dirname(__file__) 
+    dirname = os.path.dirname(__file__)
     image_name = image_url.split('/')[4]
     image_path = os.path.join(dirname, "images", image_name)
     book_path = os.path.join(dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
@@ -50,14 +51,20 @@ def serialize_book(book_id, soup, image_url):
     return to_json
 
 
-def download_image(image_url, response):
-    image_name = image_url.split('/')[4]
+def download_image(url, book):
+    image_url = urljoin(url, book['src'])
+    image_name = image_url.split('/')[-1]
     images_path = pathlib.Path("images/")
     images_path.mkdir(parents=True, exist_ok=True)
     filename = Path('images', str(image_name))
 
+    image = urllib.request.urlopen(image_url)
+
     with open(filename, 'wb') as file:
-        file.write(response.content)
+        content = image.read()
+        file.write(content)
+    
+    return image_url
 
 
 def download_book(book_id, response, soup):
@@ -109,23 +116,15 @@ def make_parser_args():
 def find_books(collection_number, current_page):
     url = 'http://tululu.org/l{}/{}'.format(
                 collection_number, current_page)
-    response = requests.get(url, allow_redirects=False)
-    check_response(response)
+    try:
+        response = requests.get(url, allow_redirects=False)
+        check_response(response)
+    except RedirectException as error:
+        print(error)
     collection_soup = BeautifulSoup(response.text, 'lxml')
     selector = "div.bookimage"
     books = collection_soup.select(selector)
     return books, url
-
-
-def get_image_url(url, book):
-    image_url = urljoin(url, book['src'])
-    try:
-        response = requests.get(
-            image_url, allow_redirects=False)
-        check_response(response)
-    except RedirectException as error:
-        print(error)
-    return image_url, response
 
 
 def get_book_url(url, book):
@@ -157,9 +156,8 @@ def main():
 
             for tag in books:
                 for book in tag.select('img'):
-                    image_url, response = get_image_url(url, book)
                     if not args.skip_images:
-                        download_image(image_url, response)
+                        image_url = download_image(url, book)
 
                 for book in tag.select('a'):
                     book_id, response, soup = get_book_url(url, book)
