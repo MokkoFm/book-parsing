@@ -115,9 +115,9 @@ def make_parser_args():
 
 
 def find_books(collection_number, current_page):
-    url = 'http://tululu.org/l{}/{}'.format(
-        collection_number, current_page)
     try:
+        url = 'http://tululu.org/l{}/{}'.format(
+            collection_number, current_page)
         response = requests.get(url, allow_redirects=False)
         check_response(response)
     except RedirectException as error:
@@ -160,19 +160,35 @@ def main():
                     image_url = urljoin(url, book['src'])
                     image_name = image_url.split('/')[-1]
                     if not args.skip_images:
-                        download_image(image_url, image_name)
+                        try:
+                            download_image(image_url, image_name)
+                        except requests.HTTPError:
+                            sys.stderr.write("Error with URL\n")
+                            continue
+                        except requests.ConnectionError:
+                            sys.stderr.write("Error with connection\n")
+                            sleep(30)
+                            continue
+                        except requests.TimeoutError:
+                            sys.stderr.write("Timeout error\n")
+                            sleep(30)
+                            continue
 
                 for book in tag.select('a'):
                     book_id, response, soup = get_book_url(url, book)
                     if not args.skip_txt:
                         try:
                             download_book(book_id, response, soup)
-                        except requests.HTTPError as error:
-                            sys.stderr.write("Error with URL\n", error)
+                        except requests.HTTPError:
+                            sys.stderr.write("Error with URL\n")
                             continue
-                        except requests.ConnectionError as error:
-                            sys.stderr.write("Error with connection\n", error)
-                            sleep(15)
+                        except requests.ConnectionError:
+                            sys.stderr.write("Error with connection\n")
+                            sleep(30)
+                            continue
+                        except requests.TimeoutError:
+                            sys.stderr.write("Timeout error\n")
+                            sleep(30)
                             continue
 
                     if not args.skip_json:
@@ -186,6 +202,13 @@ def main():
 
         except RedirectException as error:
             print(error)
+        except requests.HTTPError:
+            sys.stderr.write("Error with URL\n")
+            continue
+        except requests.ConnectionError:
+            sys.stderr.write("Error with connection\n")
+            sleep(30)
+            continue
 
 
 if __name__ == "__main__":
