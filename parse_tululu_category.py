@@ -142,6 +142,12 @@ def get_book_url(url, book):
     return book_id, response, soup
 
 
+def write_json_file(last_page, json_data):
+    if last_page:
+        with open("books.json", "w", encoding='utf-8') as my_file:
+            json.dump(json_data, my_file, ensure_ascii=False)
+
+
 def main():
     args = make_parser_args()
     page_number = args.start_page
@@ -194,11 +200,8 @@ def main():
                     if not args.skip_json:
                         to_json = serialize_book(book_id, soup, image_name)
                         json_data.append(to_json)
-                        if last_page:
-                            with open("books.json", "w",
-                                      encoding='utf-8') as my_file:
-                                json.dump(json_data, my_file,
-                                          ensure_ascii=False)
+
+            write_json_file(last_page, json_data)
 
         except RedirectException as error:
             print(error)
