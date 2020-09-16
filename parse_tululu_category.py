@@ -65,7 +65,7 @@ def download_image(image_url, image_name):
     with open(filename, 'wb') as file:
         content = image.read()
         file.write(content)
-    return image_url
+    return image_url, filename
 
 
 def download_book(book_id, response, soup):
@@ -101,7 +101,7 @@ def make_parser_args():
     parser.add_argument('-start', '--start_page',
                         help='Choose first page', default=1, type=int)
     parser.add_argument('-end', '--end_page',
-                        help='Choose last page', default=3, type=int)
+                        help='Choose last page', default=5, type=int)
     parser.add_argument('--skip_images', help='Skip downloading images',
                         action='store_true', default=False)
     parser.add_argument('--skip_txt', help='Skip downloading books',
