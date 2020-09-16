@@ -31,12 +31,12 @@ def check_response(response):
         raise RedirectException('Warning, redirect!')
 
 
-def serialize_book(book_id, soup, image_name):
+def serialize_book(book_id, soup, filename):
     title_selector = soup.select_one("h1")
     title_text = title_selector.text
     title_for_json = title_text.strip(':').rsplit(':')[0].strip()
     dirname = os.path.dirname(__file__)
-    image_path = os.path.join(dirname, "images", image_name)
+    image_path = os.path.join(dirname, filename)
     book_path = os.path.join(
         dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
     author_title = soup.select_one("h1 a")
@@ -65,7 +65,7 @@ def download_image(image_url, image_name):
     with open(filename, 'wb') as file:
         content = image.read()
         file.write(content)
-    return image_url, filename
+    return filename
 
 
 def download_book(book_id, response, soup):
@@ -167,7 +167,7 @@ def main():
                     image_name = image_url.split('/')[-1]
                     if not args.skip_images:
                         try:
-                            download_image(image_url, image_name)
+                            filename = download_image(image_url, image_name)
                         except requests.HTTPError:
                             sys.stderr.write("Error with URL\n")
                             continue
@@ -198,7 +198,7 @@ def main():
                             continue
 
                     if not args.skip_json:
-                        to_json = serialize_book(book_id, soup, image_name)
+                        to_json = serialize_book(book_id, soup, filename)
                         json_data.append(to_json)
 
             write_json_file(last_page, json_data)
