@@ -36,7 +36,7 @@ Besides, you can find json-file in `static` folder.
 python render_website.python
 ```
 You can find your own library by link: [http://127.0.0.1:5500/pages/index1.html](http://127.0.0.1:5500/pages/index1.html).
-You library can work offline. 
+You library can work offline as well. 
 
 ### Purpose
 

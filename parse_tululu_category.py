@@ -38,7 +38,8 @@ def serialize_book(book_id, soup, filename):
     dirname = os.path.dirname(__file__)
     image_path = os.path.join(dirname, filename)
     book_path = os.path.join(
-        dirname, "media", "books", "{}. {}.txt".format(book_id, title_for_json))
+        dirname, "media", "books", "{}. {}.txt".format(
+            book_id, title_for_json))
     author_title = soup.select_one("h1 a")
     author = author_title.text
     genre_selector = soup.select("span.d_book a")
@@ -189,6 +190,7 @@ def main():
                             sys.stderr.write("Error with URL\n")
                             continue
                         except OSError:
+                            sys.stderr.write("Impossible filename\n")
                             continue
                         except requests.ConnectionError:
                             sys.stderr.write("Error with connection\n")
@@ -200,8 +202,12 @@ def main():
                             continue
 
                     if not args.skip_json:
-                        to_json = serialize_book(book_id, soup, filename)
-                        json_data.append(to_json)
+                        try:
+                            to_json = serialize_book(book_id, soup, filename)
+                            json_data.append(to_json)
+                        except UnboundLocalError:
+                            sys.stderr.write("Image_src - no information\n")
+                            exit()
 
             write_json_file(last_page, json_data)
 
