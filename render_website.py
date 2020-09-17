@@ -15,11 +15,19 @@ def on_reload():
     template = env.get_template('template.html')
 
     book_pages = list(chunked(books, 10))
+    pages_amount = len(book_pages)
     for page_number, page in enumerate(book_pages):
-        rendered_page = template.render(books=page)
+        rendered_page = template.render(
+            books=page,
+            pages_amount=pages_amount,
+            page_number=page_number + 1)
         with open('pages/index{}.html'.format(page_number + 1),
                   'w', encoding="utf8") as file:
             file.write(rendered_page)
+
+        if page_number == 0:
+            with open('pages/index.html', 'w', encoding="utf8") as file:
+                file.write(rendered_page)
 
 
 on_reload()
