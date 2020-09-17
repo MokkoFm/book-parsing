@@ -13,9 +13,10 @@ def on_reload():
         autoescape=select_autoescape(['html'])
     )
     template = env.get_template('template.html')
+
     book_pages = list(chunked(books, 10))
-    for page_number, book_page in enumerate(book_pages):
-        rendered_page = template.render(books=book_page)
+    for page_number, page in enumerate(book_pages):
+        rendered_page = template.render(books=page)
         with open('pages/index{}.html'.format(page_number + 1),
                   'w', encoding="utf8") as file:
             file.write(rendered_page)

@@ -12,27 +12,36 @@
   </head>
   <body>
     <div class="container">
-        <div class="row row-cols-2">
-            {% for book in books %}
-              <div class="col">
-                <div class="card mb-3" style="max-width: 540px;">
-                  <div class="row no-gutters">
-                    <div class="col-md-4">
-                      <img src="../{{book.image_src}}" class="card-img" alt="Книга {{book.title}}">
-                    </div>
-                    <div class="col-md-8">
-                      <div class="card-body">
-                        <h5 class="card-title">{{book.title}}</h5>
-                        <p class="card-text">{{book.author}}</p>
-                        <a href="../{{book.book_path}}" target="_blank" rel="noopener noreferrer">Читать</a>
-                      </div>
+      <nav aria-label="Page navigation example">
+        <ul class="pagination">
+          <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+          <li class="page-item"><a class="page-link" href="#">1</a></li>
+          <li class="page-item"><a class="page-link" href="#">2</a></li>
+          <li class="page-item"><a class="page-link" href="#">3</a></li>
+          <li class="page-item"><a class="page-link" href="#">Next</a></li>
+        </ul>
+      </nav>
+      <div class="row row-cols-2">
+          {% for book in books %}
+            <div class="col">
+              <div class="card mb-3" style="max-width: 540px;">
+                <div class="row no-gutters">
+                  <div class="col-md-4">
+                    <img src="../{{book.image_src}}" class="card-img" alt="Книга {{book.title}}">
+                  </div>
+                  <div class="col-md-8">
+                    <div class="card-body">
+                      <h5 class="card-title">{{book.title}}</h5>
+                      <p class="card-text">{{book.author}}</p>
+                      <a href="../{{book.book_path}}" target="_blank" rel="noopener noreferrer">Читать</a>
                     </div>
                   </div>
                 </div>
               </div>
-            {% endfor %}
-        </div>
-    </div>
+            </div>
+          {% endfor %}
+      </div>
+  </div>
 
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
