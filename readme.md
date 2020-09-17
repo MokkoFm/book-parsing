@@ -2,6 +2,7 @@
 
 You can download books, covers of books from web-site [tululu.org](http://tululu.org/) automatically. Besides, you can get json-file with data of your books. 
 You can use it for layout of your own offline library like [this](https://mokkofm.github.io/book-parsing/pages/). 
+
 ![image info](static/library.png)
 
 ### How to install
@@ -28,11 +29,14 @@ You can use positional arguments:
 `--skip_images` - You can skip downloading images  
 
 ### How to make layout of library 
+First of all, start parser. After that you will find downloaded books and images in `media` folder.
+Besides, you can find json-file in `static` folder. 
 
 ```
 python render_website.python
 ```
 You can find your own library by link: [http://127.0.0.1:5500/pages/index1.html](http://127.0.0.1:5500/pages/index1.html).
+You library can work offline. 
 
 ### Purpose
 
