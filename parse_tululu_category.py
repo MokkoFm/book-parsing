@@ -188,6 +188,8 @@ def main():
                         except requests.HTTPError:
                             sys.stderr.write("Error with URL\n")
                             continue
+                        except OSError:
+                            continue
                         except requests.ConnectionError:
                             sys.stderr.write("Error with connection\n")
                             sleep(30)

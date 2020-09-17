@@ -8,18 +8,17 @@ def on_reload():
     with open("books.json", "r", encoding="utf8") as file:
         books_json = file.read()
     books = json.loads(books_json)
-    chunked_books = list(chunked(books, 2))
-    for couple in chunked_books[:1]:
-        for book in couple:
-            print(book)
     env = Environment(
         loader=FileSystemLoader('.'),
         autoescape=select_autoescape(['html'])
     )
     template = env.get_template('template.html')
-    rendered_page = template.render(books=chunked_books)
-    with open('index.html', 'w', encoding="utf8") as file:
-        file.write(rendered_page)
+    book_pages = list(chunked(books, 10))
+    for page_number, book_page in enumerate(book_pages):
+        rendered_page = template.render(books=book_page)
+        with open('pages/index{}.html'.format(page_number + 1),
+                  'w', encoding="utf8") as file:
+            file.write(rendered_page)
 
 
 on_reload()
