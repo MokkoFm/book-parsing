@@ -38,7 +38,7 @@ def serialize_book(book_id, soup, filename):
     dirname = os.path.dirname(__file__)
     image_path = os.path.join(dirname, filename)
     book_path = os.path.join(
-        dirname, "books", "{}. {}.txt".format(book_id, title_for_json))
+        dirname, "media", "books", "{}. {}.txt".format(book_id, title_for_json))
     author_title = soup.select_one("h1 a")
     author = author_title.text
     genre_selector = soup.select("span.d_book a")
@@ -54,12 +54,12 @@ def serialize_book(book_id, soup, filename):
 
 def download_image(image_url, image_name):
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    images_path = pathlib.Path("images/")
+    images_path = pathlib.Path("media/images/")
     images_path.mkdir(parents=True, exist_ok=True)
     if image_name == 'nopic.gif':
-        filename = Path('images', str(image_name))
+        filename = Path('media', 'images', str(image_name))
     else:
-        filename = Path('images', timestr + '-' + str(image_name))
+        filename = Path('media', 'images', timestr + '-' + str(image_name))
     image = urllib.request.urlopen(image_url)
 
     with open(filename, 'wb') as file:
@@ -81,9 +81,9 @@ def download_book(book_id, response, soup):
     except RedirectException as error:
         print(error)
 
-    books_path = pathlib.Path("books/")
+    books_path = pathlib.Path("media/books/")
     books_path.mkdir(parents=True, exist_ok=True)
-    filename = Path('books', sanitize_filename(
+    filename = Path('media/books', sanitize_filename(
         '{}. {}.txt').format(book_id, title))
 
     with open(filename, 'wb') as file:
@@ -144,7 +144,7 @@ def get_book_url(url, book):
 
 def write_json_file(last_page, json_data):
     if last_page:
-        with open("books.json", "w", encoding='utf-8') as my_file:
+        with open("static/books.json", "w", encoding='utf-8') as my_file:
             json.dump(json_data, my_file, ensure_ascii=False)
 
 

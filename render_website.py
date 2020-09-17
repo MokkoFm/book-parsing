@@ -5,7 +5,7 @@ from more_itertools import chunked
 
 
 def on_reload():
-    with open("books.json", "r", encoding="utf8") as file:
+    with open("static/books.json", "r", encoding="utf8") as file:
         books_json = file.read()
     books = json.loads(books_json)
     env = Environment(
