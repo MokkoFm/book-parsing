@@ -21,14 +21,11 @@ def on_reload():
             books=page,
             pages_amount=pages_amount,
             page_number=page_number + 1)
-        with open('pages/index{}.html'.format(page_number + 1),
-                  'w', encoding="utf8") as file:
+
+        filename = "pages/index{}.html".format(page_number + 1)
+
+        with open(filename, 'w', encoding="utf8") as file:
             file.write(rendered_page)
-
-        if page_number == 0:
-            with open('pages/index.html', 'w', encoding="utf8") as file:
-                file.write(rendered_page)
-
 
 on_reload()
 server = Server()

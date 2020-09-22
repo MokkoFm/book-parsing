@@ -1,7 +1,7 @@
 # Parser of books & your own offline library
 
 You can download books, covers of books from web-site [tululu.org](http://tululu.org/) automatically. Besides, you can get json-file with data of your books. 
-You can use it for layout of your own offline library like [this](https://mokkofm.github.io/book-parsing/pages/). 
+You can use it for layout of your own offline library like [this](https://mokkofm.github.io/book-parsing/pages/index1.html). 
 
 ![image info](static/library.png)
 
