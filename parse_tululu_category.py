@@ -38,7 +38,7 @@ def serialize_book(book_id, soup, filename):
     dirname = os.path.dirname(__file__)
     image_path = os.path.join(dirname, filename)
     book_path = os.path.join(
-        dirname, "media", "books", "{}. {}.txt".format(
+        dirname, "media/books/{}. {}.txt".format(
             book_id, title_for_json))
     author_title = soup.select_one("h1 a")
     author = author_title.text
@@ -58,9 +58,10 @@ def download_image(image_url, image_name):
     images_path = pathlib.Path("media/images/")
     images_path.mkdir(parents=True, exist_ok=True)
     if image_name == 'nopic.gif':
-        filename = Path('media', 'images', str(image_name))
+        filename = os.path.join('media/images/{}'.format(str(image_name)))
     else:
-        filename = Path('media', 'images', timestr + '-' + str(image_name))
+        filename = os.path.join(
+            'media/images/{}'.format(timestr + '-' + str(image_name)))
     image = urllib.request.urlopen(image_url)
 
     with open(filename, 'wb') as file:
@@ -84,8 +85,8 @@ def download_book(book_id, response, soup):
 
     books_path = pathlib.Path("media/books/")
     books_path.mkdir(parents=True, exist_ok=True)
-    filename = Path('media/books', sanitize_filename(
-        '{}. {}.txt').format(book_id, title))
+    filename = os.path.join('media/books/{}'.format(
+        sanitize_filename('{}. {}.txt').format(book_id, title)))
 
     with open(filename, 'wb') as file:
         print('Download', filename)
