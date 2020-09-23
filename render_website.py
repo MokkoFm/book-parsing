@@ -27,6 +27,7 @@ def on_reload():
         with open(filename, 'w', encoding="utf8") as file:
             file.write(rendered_page)
 
+
 on_reload()
 server = Server()
 server.watch('template.html', on_reload)
