@@ -37,7 +37,3 @@ python render_website.python
 ```
 You can find your own library by link: [http://127.0.0.1:5500/pages/index1.html](http://127.0.0.1:5500/pages/index1.html).
 You library can work offline as well. 
-
-### Purpose
-
-Code was writing for learning purpose as a part of course for web-developers [dvmn.org](https://dvmn.org/).
